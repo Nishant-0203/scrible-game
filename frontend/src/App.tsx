@@ -1,26 +1,39 @@
-import { Navigate, Route, Routes } from 'react-router-dom';
-import LoginPage from './pages/LoginPage';
-import JoinRoomPage from './pages/JoinRoomPage';
-import LobbyPage from './pages/LobbyPage';
-import DashboardPage from './pages/DashboardPage';
-import NotFoundPage from './pages/NotFoundPage';
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import Lobby from "./pages/Lobby";
+import JoinRoom from "./pages/JoinRoom";
+import NotFound from "./pages/NotFound";
+import LoginPage from "./components/auth/LoginPage";
+import Dashboard from "./pages/Dashboard";
 
-function App() {
-  return (
-    <main className="relative min-h-screen overflow-hidden bg-gradient-to-b from-[#fdf9f3] via-[#fbf3df] to-[#f6e6cc] px-5 py-10 sm:px-8">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_20%,rgba(17,24,39,0.06),transparent_50%),radial-gradient(circle_at_85%_80%,rgba(245,158,11,0.2),transparent_45%)]" />
-      <div className="relative mx-auto flex w-full max-w-6xl items-center justify-center">
+const queryClient = new QueryClient();
+
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <TooltipProvider>
+      <Toaster />
+      <Sonner />
+      <BrowserRouter>
         <Routes>
-          <Route path="/" element={<LoginPage />} />
-          <Route path="/join-room" element={<JoinRoomPage />} />
-          <Route path="/lobby" element={<LobbyPage />} />
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/404" element={<NotFoundPage />} />
-          <Route path="*" element={<Navigate to="/404" replace />} />
+          {/* Redirect root to login */}
+          <Route path="/" element={<Navigate to="/login" replace />} />
+          {/* Login / welcome screen */}
+          <Route path="/login" element={<LoginPage />} />
+          {/* Lobby / connection screen */}
+          <Route path="/lobby" element={<Lobby />} />
+          {/* Invite link — auto-join a specific room */}
+          <Route path="/join/:roomId" element={<JoinRoom />} />
+          {/* Dashboard */}
+          <Route path="/dashboard" element={<Dashboard />} />
+          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          <Route path="*" element={<NotFound />} />
         </Routes>
-      </div>
-    </main>
-  );
-}
+      </BrowserRouter>
+    </TooltipProvider>
+  </QueryClientProvider>
+);
 
 export default App;
