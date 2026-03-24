@@ -1,82 +1,81 @@
-const path = require('node:path');
-const express = require('express');
-const http = require('node:http');
-const cors = require('cors');
-const { Server } = require('socket.io');
+import 'dotenv/config';
+import express from 'express';
+import { createServer } from 'http';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+import { initializeSocket } from './config/socket.js';
 
-const env = require('./config/env');
-const { initializeRedis } = require('./config/redis');
-const { registerRoomHandlers } = require('./sockets/roomHandlers');
-const { logInfo, logError } = require('./utils/logger');
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const PUBLIC_DIR = join(__dirname, '..', 'public');
 
+// Configuration
+const PORT = process.env.PORT || 3000;
 const app = express();
-const server = http.createServer(app);
+const httpServer = createServer(app);
 
-const io = new Server(server, {
-  cors: {
-    origin: env.frontendUrl,
-    methods: ['GET', 'POST'],
-    credentials: true,
-  },
-});
-
-initializeRedis();
-
-app.use(
-  cors({
-    origin: env.frontendUrl,
-    credentials: true,
-  }),
-);
+// Middleware
 app.use(express.json());
+app.use(express.static(PUBLIC_DIR)); // Serves D:\Scribble\public regardless of cwd
 
-app.get('/health', (_req, res) => {
-  res.status(200).json({
-    ok: true,
-    service: 'backend',
-    uptime: process.uptime(),
-    timestamp: new Date().toISOString(),
+// ============================================
+// REST API Endpoints (Optional - for testing)
+// ============================================
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    timestamp: Date.now(),
+    uptime: process.uptime()
   });
 });
 
-app.get('/', (_req, res) => {
-  res.status(200).json({
-    message: 'Scribbl backend is running',
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({ error: 'Not found' });
+});
+
+// Error handler
+app.use((err, req, res, next) => {
+  console.error('[Express] Error:', err);
+  res.status(500).json({ error: 'Internal server error' });
+});
+
+// ============================================
+// Initialize Socket.IO
+// ============================================
+
+const io = initializeSocket(httpServer);
+
+// ============================================
+// Start Server
+// ============================================
+
+httpServer.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
+
+// ============================================
+// Graceful Shutdown
+// ============================================
+
+process.on('SIGTERM', () => {
+  console.log('[Server] SIGTERM received, closing server gracefully...');
+  httpServer.close(() => {
+    console.log('[Server] Server closed');
+    process.exit(0);
   });
-});
-
-const frontendDist = path.resolve(__dirname, '../../frontend/dist');
-app.use(express.static(frontendDist));
-
-app.get('/{*any}', (req, res, next) => {
-  if (req.path.startsWith('/health') || req.path.startsWith('/socket.io')) {
-    next();
-    return;
-  }
-
-  res.sendFile(path.join(frontendDist, 'index.html'), (error) => {
-    if (error) {
-      next();
-    }
-  });
-});
-
-io.on('connection', (socket) => {
-  logInfo(`Socket connected: ${socket.id}`);
-  registerRoomHandlers(io, socket);
-});
-
-server.listen(env.port, () => {
-  logInfo(`Backend listening on port ${env.port}`);
-  logInfo(`Allowed frontend origin: ${env.frontendUrl}`);
 });
 
 process.on('SIGINT', () => {
-  logInfo('Shutting down server...');
-  io.close();
-  server.close(() => process.exit(0));
+  console.log('\n[Server] SIGINT received, closing server gracefully...');
+  httpServer.close(() => {
+    console.log('[Server] Server closed');
+    process.exit(0);
+  });
 });
 
-process.on('unhandledRejection', (error) => {
-  logError('Unhandled rejection', error);
+// Unhandled rejection handler
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[Server] Unhandled Rejection at:', promise, 'reason:', reason);
 });

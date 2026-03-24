@@ -1,29 +1,36 @@
 {
-  "name": "backend",
+  "name": "scribble-game-backend",
   "version": "1.0.0",
-  "description": "Scribbl backend API and Socket.IO server",
+  "description": "Real-time multiplayer drawing game backend - Phase 1",
   "main": "src/server.js",
+  "type": "module",
   "scripts": {
-    "dev": "nodemon src/server.js",
     "start": "node src/server.js",
-    "lint": "eslint src --ext .js",
-    "seed": "node src/utils/seed.js"
+    "dev": "node --watch src/server.js",
+    "test": "node --test tests/idGenerator.test.js tests/roomManager.test.js tests/socket.test.js"
   },
-  "keywords": [],
+  "keywords": [
+    "websocket",
+    "socket.io",
+    "multiplayer",
+    "drawing-game",
+    "real-time"
+  ],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
   "dependencies": {
-    "cors": "^2.8.6",
+    "@socket.io/redis-adapter": "^8.3.0",
     "dotenv": "^17.3.1",
-    "express": "^5.2.1",
-    "ioredis": "^5.10.1",
-    "socket.io": "^4.8.3"
+    "express": "^4.18.2",
+    "redis": "^5.11.0",
+    "socket.io": "^4.6.1",
+    "uuid": "^9.0.0"
   },
   "devDependencies": {
-    "eslint": "^10.1.0",
-    "eslint-config-prettier": "^10.1.8",
-    "nodemon": "^3.1.14",
-    "prettier": "^3.8.1"
+    "nodemon": "^3.0.1",
+    "socket.io-client": "^4.8.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
