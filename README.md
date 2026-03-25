@@ -1,73 +1,246 @@
-# Welcome to your Lovable project
+# Scribble - Real-Time Multiplayer Drawing Game
 
-## Project info
+A full-stack application where players can join rooms and participate in real-time drawing games together.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Project Overview
 
-## How can I edit this code?
+Scribble is a modern web-based multiplayer drawing game featuring:
+- Real-time synchronization across multiple players using WebSockets
+- Room-based game organization with unique room identifiers
+- User authentication with Google OAuth and guest login
+- Responsive UI with dark/light mode support
+- Scalable backend infrastructure with Redis support
 
-There are several ways of editing your application.
+## Tech Stack
 
-**Use Lovable**
+### Frontend
+- **React** 19 - UI framework
+- **TypeScript** - Type safety and better DX
+- **Vite** - Fast build tool and dev server
+- **Tailwind CSS** - Utility-first CSS framework
+- **shadcn/ui** - Pre-built accessible UI components
+- **React Router** - Client-side routing
+- **Socket.IO Client** - Real-time bidirectional communication
+- **Zustand** - Lightweight state management
+- **Axios** - HTTP client
+- **Motion** - Animation library
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+### Backend
+- **Express.js** - Web server framework
+- **Socket.IO** - Real-time event-driven communication
+- **Redis** - Distributed caching and pub/sub adapter
+- **Node.js** (v18+) - Runtime environment
+- **UUID** - Unique ID generation
+- **dotenv** - Environment configuration
 
-Changes made via Lovable will be committed automatically to this repo.
+## Project Structure
 
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+```
+scribble-game/
+├── backend/                 # Express + Socket.IO server
+│   ├── src/
+│   │   ├── server.js       # Main server entry point
+│   │   ├── config/
+│   │   │   └── socket.js   # Socket.IO configuration
+│   │   ├── rooms/          # Game room management
+│   │   ├── sockets/        # Socket event handlers
+│   │   └── utils/          # Helper utilities
+│   ├── public/             # Static files (served by Express)
+│   └── package.json
+│
+├── frontend/               # React + Vite application
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── auth/       # Authentication components
+│   │   │   │   ├── GoogleButton.tsx
+│   │   │   │   ├── GuestLogin.tsx
+│   │   │   │   ├── LoginCard.tsx
+│   │   │   │   └── LoginPage.tsx
+│   │   │   ├── lobby/      # Lobby components
+│   │   │   ├── Navbar.tsx
+│   │   │   └── ui/         # shadcn/ui components
+│   │   ├── pages/          # Page components
+│   │   │   ├── DashboardPage.tsx
+│   │   │   ├── JoinRoomPage.tsx
+│   │   │   ├── Lobby.tsx
+│   │   │   └── NotFoundPage.tsx
+│   │   ├── services/       # API and Socket.IO service
+│   │   ├── store/          # Zustand state stores
+│   │   ├── hooks/          # Custom React hooks
+│   │   ├── types/          # TypeScript type definitions
+│   │   ├── App.tsx
+│   │   └── main.tsx
+│   └── package.json
+│
+└── package.json            # Monorepo root (npm workspaces)
 ```
 
-**Edit a file directly in GitHub**
+## Getting Started
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### Prerequisites
+- **Node.js** v18.0.0 or higher
+- **npm** or **yarn**
 
-**Use GitHub Codespaces**
+### Installation
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+1. **Clone the repository**
+   ```sh
+   git clone <repository-url>
+   cd scribble-game
+   ```
 
-## What technologies are used for this project?
+2. **Install dependencies**
+   ```sh
+   npm install
+   ```
 
-This project is built with:
+3. **Setup environment variables**
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+   Create a `.env` file in the `backend` directory:
+   ```
+   PORT=3000
+   NODE_ENV=development
+   REDIS_URL=redis://localhost:6379
+   ```
 
-## How can I deploy this project?
+### Running the Application
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+#### Development Mode (Both Backend & Frontend)
+```sh
+npm run dev
+```
+This runs the backend on `http://localhost:3000` and frontend on `http://localhost:5173` (Vite default).
 
-## Can I connect a custom domain to my Lovable project?
+#### Backend Only
+```sh
+npm run dev --workspace backend
+```
 
-Yes, you can!
+#### Frontend Only
+```sh
+npm run dev --workspace frontend
+```
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+#### Production Build
+```sh
+npm run build
+```
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+#### Start Production Server
+```sh
+npm start
+```
+
+## Available Scripts
+
+### Root Commands
+- `npm run dev` - Start both backend and frontend in development mode
+- `npm run start-dev` - Alias for `npm run dev`
+- `npm run build` - Build frontend for production
+- `npm start` - Start backend production server
+- `npm run start-prod` - Build frontend and start backend
+- `npm run seed` - Seed backend database/cache
+- `npm run lint` - Run linters for both backend and frontend
+
+### Backend
+- `npm run dev --workspace backend` - Start with auto-reload
+- `npm run test --workspace backend` - Run tests
+- `npm start --workspace backend` - Start production server
+
+### Frontend
+- `npm run dev --workspace frontend` - Start Vite dev server
+- `npm run build --workspace frontend` - Build for production
+- `npm run lint --workspace frontend` - Run ESLint
+- `npm run preview --workspace frontend` - Preview production build locally
+
+## Features
+
+### User Authentication
+- Google OAuth integration
+- Guest login support
+- Session management
+
+### Game Features
+- Create or join game rooms
+- Real-time game state synchronization
+- Multi-player drawing canvas
+- Room management and player tracking
+
+### UI/UX
+- Responsive design for desktop and tablet
+- Dark/light mode support
+- Accessible component library
+- Smooth animations and transitions
+
+## Development Guidelines
+
+### Code Style
+- Use TypeScript for type safety
+- Follow ESLint configuration
+- Format code with Prettier (npm run format)
+- Use component-based architecture
+
+### Socket.IO Events
+Socket events are organized by features:
+- **Room management**: Create, join, leave, delete room
+- **Game state**: Start game, update drawing, submit answer
+- **Player management**: Player join, player leave, player update
+- **Chat/Messages**: Real-time messaging between players
+
+### State Management
+- Use Zustand for global state (auth, room, player info)
+- Component-level state with React hooks for local UI state
+- Socket events for real-time state synchronization
+
+## Deployment
+
+The application can be deployed to various platforms:
+- **Backend**: Heroku, Railway, DigitalOcean, AWS (Node.js)
+- **Frontend**: Vercel, Netlify, AWS S3 + CloudFront
+- **Full Stack**: Docker containers with orchestration
+
+### Pre-deployment Checklist
+1. Set appropriate environment variables
+2. Build frontend for production: `npm run build`
+3. Ensure Redis is available in production
+4. Configure CORS settings for different domains
+5. Set up SSL/TLS certificates for HTTPS
+
+## Troubleshooting
+
+### Port Already in Use
+```sh
+# Kill process on port 3000 (backend)
+lsof -ti:3000 | xargs kill -9
+
+# Frontend uses 5173 by default with Vite
+```
+
+### Redis Connection Issues
+Ensure Redis is running:
+```sh
+redis-cli ping  # Should return PONG
+```
+
+### Build Errors
+Clear cache and reinstall:
+```sh
+rm -rf node_modules package-lock.json
+npm install
+npm run build
+```
+
+## Contributing
+
+1. Create a feature branch: `git checkout -b feature/amazing-feature`
+2. Commit changes: `git commit -m 'Add amazing feature'`
+3. Push to branch: `git push origin feature/amazing-feature`
+4. Open a Pull Request
+
+## License
+
+ISC License - see LICENSE file for details
+
+## Support
+
+For issues and questions, please open a GitHub issue or contact the development team.
