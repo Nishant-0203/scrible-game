@@ -1,8 +1,9 @@
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { useGoogleLogin } from "@react-oauth/google";
+import { GoogleLogin } from "@react-oauth/google";
 import AnimatedBackground from "@/components/lobby/AnimatedBackground";
 import LoginCard from "./LoginCard";
+import { googleLogin, saveAuth } from "@/services/auth";
 
 /* ── Canvas illustration (floating SVG sketch) ─────────────────────────── */
 const CanvasIllustration = () => (
@@ -121,37 +122,19 @@ const GlowAccent = () => (
   />
 );
 
-/* ── LoginPage ──────────────────────────────────────────────────────────── */
+/* ── LoginPage ──────────────────────────────────────────────────────────────────────────────── */
 const LoginPage = () => {
   const navigate = useNavigate();
 
-  const googleLogin = useGoogleLogin({
-    onSuccess: async (tokenResponse) => {
-      try {
-        const res = await fetch(
-          `https://www.googleapis.com/oauth2/v3/userinfo?access_token=${tokenResponse.access_token}`
-        );
-        const userInfo = await res.json();
-        const displayName: string = userInfo.name || userInfo.email || "Player";
-        localStorage.setItem("inka_username", displayName);
-        localStorage.setItem("inka_auth_type", "google");
-        navigate("/lobby");
-      } catch (err) {
-        console.error("[Auth] Failed to fetch Google user info:", err);
-      }
-    },
-    onError: (error) => {
-      console.error("[Auth] Google login error:", error);
-    },
-  });
-
-  const onGoogleLogin = () => googleLogin();
-
-  const onGuestLogin = (username: string) => {
-    // TODO: wire up auth service; for now persist username and go to lobby
-    console.log("[Auth] Guest login:", username);
-    localStorage.setItem("inka_username", username);
-    navigate("/lobby");
+  const onGoogleSuccess = async (credentialResponse: { credential?: string }) => {
+    if (!credentialResponse.credential) return;
+    try {
+      const result = await googleLogin(credentialResponse.credential);
+      saveAuth(result);
+      navigate("/lobby");
+    } catch (err) {
+      console.error("[Auth] Google login failed:", err);
+    }
   };
 
   return (
@@ -256,7 +239,9 @@ const LoginPage = () => {
           </span>
         </motion.div>
 
-        <LoginCard onGoogleLogin={onGoogleLogin} onGuestLogin={onGuestLogin} />
+        <LoginCard
+          onGoogleSuccess={onGoogleSuccess}
+        />
 
         {/* Mobile feature bullets */}
         <motion.div

@@ -1,38 +1,56 @@
-import { io } from 'socket.io-client';
-import type { LobbyRoom } from '../types/sockets';
+import { io, Socket } from "socket.io-client";
+import type { ClientToServerEvents, ServerToClientEvents, ErrorResponse } from "@/types/socket";
+import { getToken } from "./auth";
 
-const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:4000';
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
 
-export const socket = io(socketUrl, {
-  autoConnect: true,
-  transports: ['websocket'],
-});
+// Singleton — one socket connection shared across the whole app.
+export const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(
+  BACKEND_URL,
+  {
+    transports: ["polling", "websocket"], // polling first so Render's proxy can handshake, then upgrades to ws
+    autoConnect: false,
+    reconnection: true,
+    reconnectionAttempts: Infinity,
+    reconnectionDelay: 1000,
+    reconnectionDelayMax: 5000,
+    auth: (cb) => {
+      // Called fresh on every connect/reconnect so a newly saved token is always used
+      cb({ token: getToken() });
+    },
+  }
+);
 
-export type AckResponse = {
-  ok: boolean;
-  message?: string;
-  room?: LobbyRoom;
+export const connectSocket = (): void => {
+  if (!socket.connected) {
+    socket.connect();
+  }
 };
 
-export function createRoom(userName: string): Promise<AckResponse> {
-  return new Promise((resolve) => {
-    socket.emit('room:create', { userName }, (response: AckResponse) => {
-      resolve(response);
-    });
-  });
-}
+export const disconnectSocket = (): void => {
+  socket.disconnect();
+};
 
-export function joinRoom(roomId: string, userName: string): Promise<AckResponse> {
-  return new Promise((resolve) => {
-    socket.emit('room:join', { roomId, userName }, (response: AckResponse) => {
-      resolve(response);
-    });
-  });
-}
-
-export function subscribeLobbyUpdate(onUpdate: (room: LobbyRoom) => void) {
-  socket.on('lobby:update', onUpdate);
-  return () => {
-    socket.off('lobby:update', onUpdate);
+/**
+ * Wraps a socket ACK callback to guard against null/undefined responses.
+ *
+ * Socket.IO can deliver a null/undefined ACK when the server crashes or
+ * disconnects before it fires the callback. Without this guard, accessing
+ * `res.success` on null throws a TypeError that crashes the UI.
+ *
+ * Usage:
+ *   socket.emit('create_room', payload, safeCallback((res) => { ... }));
+ */
+export function safeCallback<T extends { success: boolean }>(
+  handler: (res: T | ErrorResponse) => void,
+  fallbackError = 'No response from server — please try again.'
+): (res: T | null | undefined) => void {
+  return (res) => {
+    console.debug('[Socket] ACK received:', res);
+    if (res == null || typeof res !== 'object') {
+      handler({ success: false, error: fallbackError } as ErrorResponse);
+    } else {
+      handler(res as T | ErrorResponse);
+    }
   };
 }
