@@ -1,13 +1,12 @@
 import { motion } from "framer-motion";
-import GoogleButton from "./GoogleButton";
-import GuestLogin from "./GuestLogin";
+import { GoogleLogin, CredentialResponse } from "@react-oauth/google";
+import EmailLogin from "./EmailLogin";
 
 interface LoginCardProps {
-  onGoogleLogin: () => void;
-  onGuestLogin: (username: string) => void;
+  onGoogleSuccess: (response: CredentialResponse) => void;
 }
 
-const LoginCard = ({ onGoogleLogin, onGuestLogin }: LoginCardProps) => (
+const LoginCard = ({ onGoogleSuccess }: LoginCardProps) => (
   <motion.div
     initial={{ opacity: 0, y: 28, scale: 0.97 }}
     animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -39,9 +38,18 @@ const LoginCard = ({ onGoogleLogin, onGuestLogin }: LoginCardProps) => (
     {/* Google login */}
     <div className="mb-6">
       <p className="mb-2.5 text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-        Sign in
+        Sign in with Google
       </p>
-      <GoogleButton onClick={onGoogleLogin} />
+      <div className="flex justify-center">
+        <GoogleLogin
+          onSuccess={onGoogleSuccess}
+          onError={() => console.error("[Auth] Google login error")}
+          theme="filled_black"
+          shape="rectangular"
+          size="large"
+          width="320"
+        />
+      </div>
     </div>
 
     {/* Divider */}
@@ -51,17 +59,17 @@ const LoginCard = ({ onGoogleLogin, onGuestLogin }: LoginCardProps) => (
       <div className="flex-1 h-px bg-border" />
     </div>
 
-    {/* Guest login */}
+    {/* Email login / Sign Up */}
     <div>
       <p className="mb-2.5 text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-        Play as guest
+        Email
       </p>
-      <GuestLogin onGuestLogin={onGuestLogin} />
+      <EmailLogin />
     </div>
 
     {/* Footer */}
     <p className="mt-7 text-center text-xs text-muted-foreground/60">
-      No account needed · Free to play · No ads
+      No account needed to play as guest · Free · No ads
     </p>
   </motion.div>
 );
