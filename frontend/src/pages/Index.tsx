@@ -28,11 +28,10 @@ const MobileTabBar = memo(
         <button
           key={id}
           onClick={() => onTabChange(id)}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-[11px] font-semibold tracking-wide uppercase transition-colors ${
-            activeTab === id
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-[11px] font-semibold tracking-wide uppercase transition-colors ${activeTab === id
               ? "text-primary border-b-2 border-primary"
               : "text-muted-foreground"
-          }`}
+            }`}
         >
           <Icon className="w-3.5 h-3.5" />
           {label}
@@ -67,13 +66,12 @@ const Leaderboard = memo(() => {
           return (
             <div
               key={player.id}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${
-                i === 0 && player.score > 0
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${i === 0 && player.score > 0
                   ? "bg-warning/10 border border-warning/30"
                   : isLocal
-                  ? "bg-accent border border-border"
-                  : "bg-secondary/50"
-              }`}
+                    ? "bg-accent border border-border"
+                    : "bg-secondary/50"
+                }`}
             >
               <span className="text-base font-bold w-7 text-center shrink-0">{medal(i, player.score)}</span>
               <span className="font-medium text-sm text-foreground flex-1 truncate">
