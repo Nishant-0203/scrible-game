@@ -2,9 +2,10 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Mail, Lock, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { registerWithEmail, loginWithEmail, saveAuth } from "@/services/auth";
+import { registerWithEmail, loginWithEmail, guestLogin, saveAuth } from "@/services/auth";
+import GuestLogin from "./GuestLogin";
 
-type Mode = "signin" | "signup";
+type Mode = "signin" | "signup" | "guest";
 
 const EmailLogin = () => {
   const navigate = useNavigate();
@@ -38,11 +39,25 @@ const EmailLogin = () => {
     }
   };
 
+  const handleGuestLogin = async (guestUsername: string) => {
+    setError(null);
+    setLoading(true);
+    try {
+      const result = await guestLogin(guestUsername);
+      saveAuth(result);
+      navigate("/lobby");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Guest login failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Tab toggle */}
       <div className="flex rounded-xl overflow-hidden border border-border bg-secondary/50 p-1 gap-1">
-        {(["signin", "signup"] as Mode[]).map((m) => (
+        {(["signin", "signup", "guest"] as Mode[]).map((m) => (
           <button
             key={m}
             type="button"
@@ -55,12 +70,21 @@ const EmailLogin = () => {
               }
             `}
           >
-            {m === "signin" ? "Sign In" : "Sign Up"}
+            {m === "signin" ? "Sign In" : m === "signup" ? "Sign Up" : "Guest"}
           </button>
         ))}
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-3" noValidate>
+      {/* Guest login form */}
+      {mode === "guest" && (
+        <GuestLogin
+          onGuestLogin={handleGuestLogin}
+          loading={loading}
+          error={error}
+        />
+      )}
+
+      <form onSubmit={handleSubmit} className={mode === "guest" ? "hidden" : "space-y-3"} noValidate>
         <AnimatePresence mode="popLayout">
           {/* Username — Sign Up only */}
           {mode === "signup" && (
