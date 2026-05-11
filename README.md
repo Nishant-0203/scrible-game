@@ -1,246 +1,322 @@
-# Scribble - Real-Time Multiplayer Drawing Game
+# InkArena
 
-A full-stack application where players can join rooms and participate in real-time drawing games together.
+A real-time multiplayer drawing and guessing game. One player draws a word while others race to guess it — fastest guess wins the most points. Built with React, Node.js, Socket.IO, and Redis.
 
-## Project Overview
+![Node.js](https://img.shields.io/badge/Node.js-≥18-339933?logo=nodedotjs&logoColor=white)
+![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)
+![Redis](https://img.shields.io/badge/Redis-7-DC382D?logo=redis&logoColor=white)
+![Socket.IO](https://img.shields.io/badge/Socket.IO-4-010101?logo=socketdotio&logoColor=white)
 
-Scribble is a modern web-based multiplayer drawing game featuring:
-- Real-time synchronization across multiple players using WebSockets
-- Room-based game organization with unique room identifiers
-- User authentication with Google OAuth and guest login
-- Responsive UI with dark/light mode support
-- Scalable backend infrastructure with Redis support
+---
+
+## Table of Contents
+
+- [Features](#features)
+- [Architecture](#architecture)
+- [Tech Stack](#tech-stack)
+- [Project Structure](#project-structure)
+- [Getting Started](#getting-started)
+- [Environment Variables](#environment-variables)
+- [API Reference](#api-reference)
+- [Socket Events](#socket-events)
+- [Game Mechanics](#game-mechanics)
+- [Redis Schema](#redis-schema)
+
+---
+
+## Features
+
+- **Real-time drawing canvas** — strokes broadcast instantly via WebSockets with batched transmission
+- **Room-based multiplayer** — create or join rooms with unique codes
+- **Turn-based rounds** — each player takes a turn as the drawer
+- **Word selection** — drawer picks from 3 word options (easy / medium / hard)
+- **Time-based scoring** — faster correct guesses earn more points
+- **Close-guess detection** — Levenshtein distance alerts when a guess is nearly correct
+- **Distributed state** — all game state persisted in Redis with atomic Lua scripts
+- **Auto-reconnect** — players can reconnect and resume without losing progress
+- **Optional AI words** — Gemini API integration for dynamic word generation (falls back to built-in word bank)
+- **Dark theme UI** — oklch-based TweakCN theme with electric blue accents
+
+---
+
+## Architecture
+
+```
+┌─────────────┐   Socket.IO    ┌───────────────┐       ┌─────────┐
+│   React UI  │ ◄────────────► │  Express +     │ ◄───► │  Redis  │
+│  (Vite)     │   WebSocket    │  Socket.IO     │       │         │
+│  port 8080  │                │  port 3000     │       │  :6379  │
+└─────────────┘                └───────────────┘       └─────────┘
+```
+
+- **Frontend** → React SPA served by Vite dev server. Connects to backend via Socket.IO (polling → WebSocket upgrade).
+- **Backend** → Express HTTP server with Socket.IO attached. All game logic runs server-side. Redis adapter enables horizontal scaling.
+- **Redis** → Persists rooms, players, strokes, and socket mappings. Distributed locks ensure safe concurrent round control across multiple server instances.
+
+---
 
 ## Tech Stack
 
 ### Frontend
-- **React** 19 - UI framework
-- **TypeScript** - Type safety and better DX
-- **Vite** - Fast build tool and dev server
-- **Tailwind CSS** - Utility-first CSS framework
-- **shadcn/ui** - Pre-built accessible UI components
-- **React Router** - Client-side routing
-- **Socket.IO Client** - Real-time bidirectional communication
-- **Zustand** - Lightweight state management
-- **Axios** - HTTP client
-- **Motion** - Animation library
+
+| Dependency | Purpose |
+|---|---|
+| React 18 + TypeScript | UI framework |
+| Vite 5 | Build tooling, HMR, dev server |
+| Tailwind CSS 3.4 | Utility-first styling |
+| shadcn/ui (Radix) | Accessible UI primitives |
+| Zustand 5 | Lightweight global state |
+| Socket.IO Client 4.8 | Real-time server communication |
+| Framer Motion 12 | Animations and transitions |
+| React Router 7 | Client-side routing |
+| Sonner | Toast notifications |
 
 ### Backend
-- **Express.js** - Web server framework
-- **Socket.IO** - Real-time event-driven communication
-- **Redis** - Distributed caching and pub/sub adapter
-- **Node.js** (v18+) - Runtime environment
-- **UUID** - Unique ID generation
-- **dotenv** - Environment configuration
+
+| Dependency | Purpose |
+|---|---|
+| Express 4.18 | HTTP server + REST endpoints |
+| Socket.IO 4.6 | WebSocket server |
+| Redis 5 (node-redis) | State persistence |
+| @socket.io/redis-adapter | Multi-instance pub/sub |
+| UUID 9 | Player/room ID generation |
+| dotenv | Environment configuration |
+
+---
 
 ## Project Structure
 
 ```
-scribble-game/
-├── backend/                 # Express + Socket.IO server
-│   ├── src/
-│   │   ├── server.js       # Main server entry point
-│   │   ├── config/
-│   │   │   └── socket.js   # Socket.IO configuration
-│   │   ├── rooms/          # Game room management
-│   │   ├── sockets/        # Socket event handlers
-│   │   └── utils/          # Helper utilities
-│   ├── public/             # Static files (served by Express)
-│   └── package.json
+Scribble/
+├── Backend/
+│   ├── package.json
+│   ├── public/
+│   │   └── index.html              # Fallback static page
+│   └── src/
+│       ├── server.js                # Express + Socket.IO entry point
+│       ├── config/
+│       │   └── socket.js            # Socket.IO server initialization
+│       ├── game/
+│       │   ├── gameEngine.js        # Round lifecycle, scoring, timers
+│       │   ├── wordService.js       # Word bank + optional Gemini AI
+│       │   └── drawingEngine.js     # Stroke validation & broadcasting
+│       ├── redis/
+│       │   ├── redisClient.js       # Redis client singleton
+│       │   └── roomStore.js         # Redis CRUD + Lua scripts
+│       ├── rooms/
+│       │   └── roomManager.js       # High-level room operations
+│       ├── sockets/
+│       │   └── socketHandler.js     # All socket event handlers
+│       └── utils/
+│           └── idGenerator.js       # UUID generation helpers
 │
-├── frontend/               # React + Vite application
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── auth/       # Authentication components
-│   │   │   │   ├── GoogleButton.tsx
-│   │   │   │   ├── GuestLogin.tsx
-│   │   │   │   ├── LoginCard.tsx
-│   │   │   │   └── LoginPage.tsx
-│   │   │   ├── lobby/      # Lobby components
-│   │   │   ├── Navbar.tsx
-│   │   │   └── ui/         # shadcn/ui components
-│   │   ├── pages/          # Page components
-│   │   │   ├── DashboardPage.tsx
-│   │   │   ├── JoinRoomPage.tsx
-│   │   │   ├── Lobby.tsx
-│   │   │   └── NotFoundPage.tsx
-│   │   ├── services/       # API and Socket.IO service
-│   │   ├── store/          # Zustand state stores
-│   │   ├── hooks/          # Custom React hooks
-│   │   ├── types/          # TypeScript type definitions
-│   │   ├── App.tsx
-│   │   └── main.tsx
-│   └── package.json
+├── Frontend/
+│   └── ink-canvas-clash/
+│       ├── package.json
+│       ├── vite.config.ts
+│       ├── tailwind.config.ts
+│       ├── index.html
+│       └── src/
+│           ├── App.tsx              # Router setup
+│           ├── main.tsx             # React entry point
+│           ├── index.css            # Theme tokens (oklch)
+│           ├── components/
+│           │   ├── DrawingCanvas.tsx # Canvas with real-time stroke sync
+│           │   ├── ChatPanel.tsx     # Chat + guess input
+│           │   ├── PlayerList.tsx    # Scoreboard sidebar
+│           │   ├── TopBar.tsx        # Round info + timer
+│           │   ├── CountdownTimer.tsx
+│           │   ├── WordSelectionModal.tsx
+│           │   ├── WinnerModal.tsx
+│           │   ├── CorrectGuessOverlay.tsx
+│           │   └── lobby/
+│           │       ├── LobbyPanel.tsx
+│           │       ├── AnimatedBackground.tsx
+│           │       └── ConnectionBadge.tsx
+│           ├── hooks/
+│           │   └── useGameSocket.ts  # Central socket event hook
+│           ├── pages/
+│           │   ├── Lobby.tsx         # Room create/join
+│           │   └── Index.tsx         # Game page
+│           ├── services/
+│           │   └── socket.ts         # Socket.IO client instance
+│           ├── store/
+│           │   └── gameStore.ts      # Zustand game state
+│           └── types/
+│               └── socket.ts         # Shared type definitions
 │
-└── package.json            # Monorepo root (npm workspaces)
+└── redis-win/                        # Local Redis binary (Windows)
 ```
+
+---
 
 ## Getting Started
 
 ### Prerequisites
-- **Node.js** v18.0.0 or higher
-- **npm** or **yarn**
 
-### Installation
+- **Node.js** ≥ 18
+- **Redis** server (local binary included in `redis-win/` for Windows)
 
-1. **Clone the repository**
-   ```sh
-   git clone <repository-url>
-   cd scribble-game
-   ```
+### 1. Start Redis
 
-2. **Install dependencies**
-   ```sh
-   npm install
-   ```
+**Windows** (using bundled binary):
+```bash
+cd redis-win
+redis-server.exe redis.windows.conf
+```
 
-3. **Setup environment variables**
+**macOS / Linux**:
+```bash
+redis-server
+```
 
-   Create a `.env` file in the `backend` directory:
-   ```
-   PORT=3000
-   NODE_ENV=development
-   REDIS_URL=redis://localhost:6379
-   ```
+### 2. Start the Backend
 
-### Running the Application
-
-#### Development Mode (Both Backend & Frontend)
-```sh
+```bash
+cd Backend
+npm install
 npm run dev
 ```
-This runs the backend on `http://localhost:3000` and frontend on `http://localhost:5173` (Vite default).
 
-#### Backend Only
-```sh
-npm run dev --workspace backend
+The server starts on `http://localhost:3000`. Verify with:
+```bash
+curl http://localhost:3000/health
 ```
 
-#### Frontend Only
-```sh
-npm run dev --workspace frontend
-```
+### 3. Start the Frontend
 
-#### Production Build
-```sh
-npm run build
-```
-
-#### Start Production Server
-```sh
-npm start
-```
-
-## Available Scripts
-
-### Root Commands
-- `npm run dev` - Start both backend and frontend in development mode
-- `npm run start-dev` - Alias for `npm run dev`
-- `npm run build` - Build frontend for production
-- `npm start` - Start backend production server
-- `npm run start-prod` - Build frontend and start backend
-- `npm run seed` - Seed backend database/cache
-- `npm run lint` - Run linters for both backend and frontend
-
-### Backend
-- `npm run dev --workspace backend` - Start with auto-reload
-- `npm run test --workspace backend` - Run tests
-- `npm start --workspace backend` - Start production server
-
-### Frontend
-- `npm run dev --workspace frontend` - Start Vite dev server
-- `npm run build --workspace frontend` - Build for production
-- `npm run lint --workspace frontend` - Run ESLint
-- `npm run preview --workspace frontend` - Preview production build locally
-
-## Features
-
-### User Authentication
-- Google OAuth integration
-- Guest login support
-- Session management
-
-### Game Features
-- Create or join game rooms
-- Real-time game state synchronization
-- Multi-player drawing canvas
-- Room management and player tracking
-
-### UI/UX
-- Responsive design for desktop and tablet
-- Dark/light mode support
-- Accessible component library
-- Smooth animations and transitions
-
-## Development Guidelines
-
-### Code Style
-- Use TypeScript for type safety
-- Follow ESLint configuration
-- Format code with Prettier (npm run format)
-- Use component-based architecture
-
-### Socket.IO Events
-Socket events are organized by features:
-- **Room management**: Create, join, leave, delete room
-- **Game state**: Start game, update drawing, submit answer
-- **Player management**: Player join, player leave, player update
-- **Chat/Messages**: Real-time messaging between players
-
-### State Management
-- Use Zustand for global state (auth, room, player info)
-- Component-level state with React hooks for local UI state
-- Socket events for real-time state synchronization
-
-## Deployment
-
-The application can be deployed to various platforms:
-- **Backend**: Heroku, Railway, DigitalOcean, AWS (Node.js)
-- **Frontend**: Vercel, Netlify, AWS S3 + CloudFront
-- **Full Stack**: Docker containers with orchestration
-
-### Pre-deployment Checklist
-1. Set appropriate environment variables
-2. Build frontend for production: `npm run build`
-3. Ensure Redis is available in production
-4. Configure CORS settings for different domains
-5. Set up SSL/TLS certificates for HTTPS
-
-## Troubleshooting
-
-### Port Already in Use
-```sh
-# Kill process on port 3000 (backend)
-lsof -ti:3000 | xargs kill -9
-
-# Frontend uses 5173 by default with Vite
-```
-
-### Redis Connection Issues
-Ensure Redis is running:
-```sh
-redis-cli ping  # Should return PONG
-```
-
-### Build Errors
-Clear cache and reinstall:
-```sh
-rm -rf node_modules package-lock.json
+```bash
+cd Frontend/ink-canvas-clash
 npm install
-npm run build
+npm run dev
 ```
 
-## Contributing
+Opens on `http://localhost:8080`.
 
-1. Create a feature branch: `git checkout -b feature/amazing-feature`
-2. Commit changes: `git commit -m 'Add amazing feature'`
-3. Push to branch: `git push origin feature/amazing-feature`
-4. Open a Pull Request
+---
+
+## Environment Variables
+
+### Backend (`Backend/.env`)
+
+| Variable | Default | Description |
+|---|---|---|
+| `PORT` | `3000` | HTTP server port |
+| `REDIS_URL` | `redis://localhost:6379` | Redis connection URL |
+| `GEMINI_API_KEY` | — | Google Gemini API key for AI word generation (optional) |
+
+### Frontend (`Frontend/ink-canvas-clash/.env`)
+
+| Variable | Default | Description |
+|---|---|---|
+| `VITE_BACKEND_URL` | `http://localhost:3000` | Backend server URL |
+
+---
+
+## API Reference
+
+### REST Endpoints
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/health` | Health check — returns `{ status: "ok", uptime, redis }` |
+| `GET` | `/api/stats` | Server stats — connected sockets, room count, uptime |
+| `GET` | `/api/rooms/:roomId` | Room details — players, game state, round info |
+
+---
+
+## Socket Events
+
+### Client → Server
+
+| Event | Payload | Description |
+|---|---|---|
+| `create_room` | `{ roomId, username? }` | Create a new room (auto-joins if username provided) |
+| `join_room` | `{ roomId, username }` | Join an existing room |
+| `start_game` | `{ roomId, totalRounds, difficulty? }` | Host starts the game (1–10 rounds) |
+| `select_word` | `{ roomId, word }` | Drawer picks a word from options |
+| `submit_guess` | `{ roomId, guess }` | Submit a guess for the current word |
+| `send_message` | `{ roomId, message }` | Send a chat message |
+| `draw_stroke` | `{ roomId, stroke }` | Single stroke (legacy) |
+| `draw_stroke_batch` | `{ roomId, strokes[] }` | Batched strokes (primary path, max 200) |
+| `request_sync_strokes` | `{ roomId }` | Request full stroke history (reconnect) |
+| `reconnect_player` | `{ roomId, userId }` | Reassign socket after reconnection |
+| `reset_game` | `{ roomId }` | Reset game to lobby state |
+
+### Server → Client
+
+| Event | Key Fields | Description |
+|---|---|---|
+| `room_created` | `roomId, userId` | Room successfully created |
+| `room_joined` | `roomId, userId, username` | Successfully joined room |
+| `player_list_update` | `players[], hostId` | Player list changed |
+| `game_started` | `totalRounds` | Game begins |
+| `round_started` | `roundNumber, drawerId, drawerName` | New round begins |
+| `word_options` | `words[], timeoutSeconds` | Drawer receives word choices |
+| `word_choosing` | `drawerName` | Non-drawers see "choosing" state |
+| `round_timer_start` | `roundEndTime, roundDuration` | Drawing phase begins |
+| `round_timer_update` | `remainingTime` | Timer tick (every second) |
+| `word_reveal` | `word` | Drawer sees the full word |
+| `word_hint` | `hint, wordLength` | Guessers see masked word (`_ _ _`) |
+| `correct_guess` | `userId, username, pointsEarned` | Someone guessed correctly |
+| `close_guess` | `message` | Private — guess is close |
+| `round_ended` | `word, reason, players[]` | Round over (time_up / all_guessed / drawer_left) |
+| `game_ended` | `winner, leaderboard[]` | Game finished |
+| `draw_stroke` | `stroke` | Incoming stroke from drawer |
+| `draw_stroke_batch` | `strokes[]` | Incoming batch from drawer |
+| `sync_strokes` | `strokes[]` | Full stroke history |
+| `clear_canvas` | `roomId` | Canvas cleared between rounds |
+
+---
+
+## Game Mechanics
+
+### Flow
+
+1. **Lobby** — Host creates a room, players join via room code
+2. **Start** — Host selects round count (1–10) and difficulty (easy/medium/hard)
+3. **Round** — Each connected player draws once per "round cycle"
+   - Drawer receives 3 word options (10s to choose, auto-pick on timeout)
+   - Drawing phase: 60 seconds to draw
+   - Guessers type guesses in chat
+4. **Scoring** — Time-based: faster guess = more points (10–100 pts). Drawer gets 50 bonus if anyone guesses correctly
+5. **End** — After all turns complete, leaderboard shown with winner
+
+### Turn Order
+
+Players are ordered by join time. Total turns = `totalRounds × playerCount`. Each round, every player gets one turn as drawer before moving to the next round.
+
+### Close Guess Detection
+
+A guess triggers a "close" hint if:
+- The guess contains the word (or vice versa) and is ≥ 3 characters
+- Levenshtein edit distance is exactly 1
+
+### Word Sources
+
+1. **Gemini AI** (if `GEMINI_API_KEY` set) — generates fresh words per difficulty, cached 1 hour
+2. **Built-in word bank** — 156 words across easy (60), medium (58), hard (38) tiers
+
+---
+
+## Redis Schema
+
+| Key Pattern | Type | Contents |
+|---|---|---|
+| `room:{roomId}` | Hash | Room metadata (gameState, roundNumber, currentWord, etc.) |
+| `room:{roomId}:players` | Hash | Player objects keyed by userId |
+| `room:{roomId}:strokes` | List | JSON stroke objects (append-only per round) |
+| `socket:{socketId}` | String | `{ roomId, userId }` mapping (TTL: 2h) |
+| `lock:room:{roomId}:round` | String | Distributed round lock (TTL: 15s) |
+| `lock:room:{roomId}:timer` | String | Timer ownership lock (TTL: 70s) |
+
+Atomic operations use Lua scripts for:
+- Room creation (create-if-not-exists)
+- Game start CAS (waiting → playing)
+- Lock release (delete-if-owner)
+
+---
 
 ## License
 
-ISC License - see LICENSE file for details
-
-## Support
-
-For issues and questions, please open a GitHub issue or contact the development team.
+MIT
