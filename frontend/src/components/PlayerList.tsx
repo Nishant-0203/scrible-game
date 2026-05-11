@@ -1,4 +1,4 @@
-﻿import { useGameStore } from "@/store/gameStore";
+import { useGameStore } from "@/store/gameStore";
 import { Crown, Pencil } from "lucide-react";
 
 export const PlayerList = () => {
