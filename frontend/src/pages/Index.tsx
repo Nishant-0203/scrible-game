@@ -8,7 +8,7 @@ import { GuessInput } from "@/components/GuessInput";
 import { WinnerModal } from "@/components/WinnerModal";
 import { CorrectGuessOverlay } from "@/components/CorrectGuessOverlay";
 import { WordSelectionModal } from "@/components/WordSelectionModal";
-import { useGameSocket } from "@/hooks/useGameSocket";
+import { useGameSocket } from "@/components/hooks/useGameSocket";
 import { useGameStore } from "@/store/gameStore";
 
 /* ── Mobile tab types ────────────────────────────────────────────────── */
